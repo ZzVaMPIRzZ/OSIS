@@ -5,6 +5,5 @@ int main(int argc, char **argv){
 	if ( pid == 0 ) {
 		execv( "./sequential_min_max", argv);
 	}
-	/* Put the parent to sleep for 2 seconds--let the child finished executing */
     return 0;
 }
