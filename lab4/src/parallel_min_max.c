@@ -135,7 +135,7 @@ int main(int argc, char **argv) {
       active_child_processes += 1;
       if (child_pid == 0) {
         // child process
-        sleep(1);
+        sleep(5);
         // parallel somehow
         struct MinMax min_max = GetMinMax(array, (array_size*i)/pnum, (array_size*(i+1))/pnum);
 
@@ -154,6 +154,8 @@ int main(int argc, char **argv) {
       else{
         // parent process
         signal(SIGALRM, kill_proc);
+        printf("Child %d killed\n", child_pid);
+        printf("Signal: %d\n", SIGALRM);
       }
     } else {
       printf("Fork failed!\n");
