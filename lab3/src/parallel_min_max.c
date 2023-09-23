@@ -42,16 +42,28 @@ int main(int argc, char **argv) {
             seed = atoi(optarg);
             // your code here
             // error handling
+            if (seed <= 0){
+              printf("seed is a positive number\n");
+              return 1;
+            }
             break;
           case 1:
             array_size = atoi(optarg);
             // your code here
             // error handling
+            if (array_size <= 0){
+              printf("array_size is a positive number\n");
+              return 1;
+            }
             break;
           case 2:
             pnum = atoi(optarg);
             // your code here
             // error handling
+            if (pnum <= 0){
+              printf("pnum is a positive number\n");
+              return 1;
+            }
             break;
           case 3:
             with_files = true;
@@ -91,6 +103,12 @@ int main(int argc, char **argv) {
   struct timeval start_time;
   gettimeofday(&start_time, NULL);
 
+  FILE *outfile;
+  outfile=fopen("tmpfile.txt", "w");
+
+  int pipefd[2];
+  pipe(pipefd);
+
   for (int i = 0; i < pnum; i++) {
     pid_t child_pid = fork();
     if (child_pid >= 0) {
@@ -100,11 +118,17 @@ int main(int argc, char **argv) {
         // child process
 
         // parallel somehow
+        struct MinMax min_max = GetMinMax(array, (array_size*i)/pnum, (array_size*(i+1))/pnum);
 
         if (with_files) {
           // use files here
+          fprintf(outfile, "%d %d\n", min_max.min, min_max.max);
         } else {
           // use pipe here
+          close(pipefd[0]);
+          write(pipefd[1], &min_max.max, sizeof(min_max.max));
+          write(pipefd[1], &min_max.min, sizeof(min_max.min));
+          close(pipefd[1]);
         }
         return 0;
       }
@@ -116,7 +140,7 @@ int main(int argc, char **argv) {
   }
 
   while (active_child_processes > 0) {
-    // your code here
+    wait(NULL);
 
     active_child_processes -= 1;
   }
@@ -125,19 +149,26 @@ int main(int argc, char **argv) {
   min_max.min = INT_MAX;
   min_max.max = INT_MIN;
 
+  outfile = fopen("tmpfile.txt", "r");
+
   for (int i = 0; i < pnum; i++) {
     int min = INT_MAX;
     int max = INT_MIN;
 
     if (with_files) {
       // read from files
+      fscanf(outfile, "%d %d", &min, &max);
     } else {
       // read from pipes
+      read(pipefd[0], &max, sizeof(max));
+      read(pipefd[0], &min, sizeof(min));
     }
 
     if (min < min_max.min) min_max.min = min;
     if (max > min_max.max) min_max.max = max;
   }
+  
+  fclose(outfile);
 
   struct timeval finish_time;
   gettimeofday(&finish_time, NULL);
