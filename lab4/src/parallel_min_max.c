@@ -10,23 +10,35 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <poll.h>
 
 #include <getopt.h>
 
 #include "find_min_max.h"
 #include "utils.h"
 
-void kill_proc(pid_t pid) {
-  kill(pid, SIGKILL);
-  printf("Killed %d\n", pid);
+pid_t *child_pids;
+int pnum;
+
+int pipefd[2];
+int pipefd2[2];
+
+void kill_proc(int sig) {
+  if (sig == SIGALRM) {
+    for (int i = 0; i < pnum; i++) {
+      kill(child_pids[i], SIGKILL);
+    }
+    printf("\nEND\n");
+  }
 }
 
 int main(int argc, char **argv) {
   int seed = -1;
   int array_size = -1;
-  int pnum = -1;
+  pnum = -1;
   int timeout = 0;
   bool with_files = false;
+  pipe(pipefd);
 
   while (true) {
     int current_optind = optind ? optind : 1;
@@ -125,8 +137,10 @@ int main(int argc, char **argv) {
   FILE *outfile;
   outfile=fopen("tmpfile.txt", "w");
 
-  int pipefd[2];
-  pipe(pipefd);
+  child_pids = malloc(sizeof(pid_t) * pnum);
+  pipe(pipefd2);
+  // close(pipefd2[0]);
+  // printf("Time:");
 
   for (int i = 0; i < pnum; i++) {
     pid_t child_pid = fork();
@@ -135,7 +149,11 @@ int main(int argc, char **argv) {
       active_child_processes += 1;
       if (child_pid == 0) {
         // child process
-        sleep(5);
+        int time;
+        // close(pipefd2[0]);
+        read(pipefd2[0], &time, sizeof(time));
+        printf("%d ", time);
+        sleep(time);
         // parallel somehow
         struct MinMax min_max = GetMinMax(array, (array_size*i)/pnum, (array_size*(i+1))/pnum);
 
@@ -147,28 +165,32 @@ int main(int argc, char **argv) {
           close(pipefd[0]);
           write(pipefd[1], &min_max.max, sizeof(min_max.max));
           write(pipefd[1], &min_max.min, sizeof(min_max.min));
-          close(pipefd[1]);
+          // close(pipefd[1]);
         }
         return 0;
       }
       else{
         // parent process
+        for (int j = 0; j < i; j++) {
+          write(pipefd2[1], &j, sizeof(j));
+        }
+        child_pids[i] = child_pid;
         signal(SIGALRM, kill_proc);
-        printf("Child %d killed\n", child_pid);
-        printf("Signal: %d\n", SIGALRM);
       }
     } else {
       printf("Fork failed!\n");
       return 1;
     }
   }
-
   while (active_child_processes > 0) {
     wait(NULL);
-    
-    signal(SIGALRM, kill_proc);
+    // signal(SIGALRM, kill_proc);
     active_child_processes -= 1;
   }
+
+  struct pollfd pfd[1];
+    pfd[0].fd = pipefd[0];
+    pfd[0].events = POLLIN;
 
   struct MinMax min_max;
   min_max.min = INT_MAX;
@@ -185,8 +207,10 @@ int main(int argc, char **argv) {
       fscanf(outfile, "%d %d", &min, &max);
     } else {
       // read from pipes
-      read(pipefd[0], &max, sizeof(max));
-      read(pipefd[0], &min, sizeof(min));
+      if (poll(pfd, 1, 0) != 0) {
+        read(pipefd[0], &max, sizeof(max));
+        read(pipefd[0], &min, sizeof(min));
+      }
     }
 
     if (min < min_max.min) min_max.min = min;
@@ -202,8 +226,11 @@ int main(int argc, char **argv) {
   elapsed_time += (finish_time.tv_usec - start_time.tv_usec) / 1000.0;
 
   free(array);
-
-  printf("Min: %d\n", min_max.min);
+  if (min_max.max == INT_MIN || min_max.min == INT_MAX) {
+    printf("\nResults are not found\n");
+    return 0;
+  }
+  printf("\nMin: %d\n", min_max.min);
   printf("Max: %d\n", min_max.max);
   printf("Elapsed time: %fms\n", elapsed_time);
   fflush(NULL);
