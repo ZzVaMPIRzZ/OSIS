@@ -11,14 +11,15 @@ int main(void)
     for (i = 9; i >= 0; --i) {  
         pids[i] = fork();  
         if (pids[i] == 0) {  
-            printf("Child%d\n", i);  
-            sleep(i+1);  
+            printf("CHILD %d\n", i);  
+            sleep(i+1); 
+            printf("CHILD %d DONE\n", i); 
             _exit(0);  
         }  
     }  
   
     for (i = 9; i >= 0; --i) {  
-        printf("parent%d\n", i);  
+        printf("PARENT %d\n", i);  
         waitpid(pids[i], NULL, 0);  
     }  
   

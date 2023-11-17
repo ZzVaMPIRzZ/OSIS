@@ -16,9 +16,9 @@ find_min_max.o : utils.h find_min_max.h
 zombie :
 	$(CC) -o zombie zombie_processes.c
 
-clean :
-	rm utils.o find_min_max.o sequential_min_max parallel_min_max main1 process_memory zombie
+process_memory :
+	$(CC) -o process_memory process_memory.c
 
-all : utils.o find_min_max.o utils.h find_min_max.h
-	$(CC) -o sequential_min_max find_min_max.o utils.o sequential_min_max.c $(CFLAGS)
-	rm utils.o find_min_max.o
+clean :
+	rm utils.o find_min_max.o sequential_min_max parallel_min_max process_memory zombie
+	
