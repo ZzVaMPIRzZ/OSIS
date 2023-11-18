@@ -19,8 +19,8 @@ int main(void)
     }  
   
     for (i = 9; i >= 0; --i) {  
-        printf("PARENT %d\n", i);  
-        waitpid(pids[i], NULL, 0);  
+        waitpid(pids[i], NULL, 0); 
+        printf("KILLED %d\n", i);   
     }  
   
     return 0;  
