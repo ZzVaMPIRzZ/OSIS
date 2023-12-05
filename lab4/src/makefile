@@ -14,19 +14,26 @@ zombie :
 	$(CC) -o zombie zombie_processes.c
 
 process_memory :
-	$(CC) -o process_memory process_memory.c	
+	$(CC) -o process_memory process_memory.c
 
-psum : libsum.a
-	$(CC) -c parallel_sum.c -l sum -o psum -pthread $(CFLAGS)
+psum.o :
+	$(CC) -c parallel_sum.c -o psum.o -pthread $(CFLAGS)
+
+psum : libsum.a psum.o utils.o
+	$(CC) psum.o utils.o -Lbin -lsum -o psum -pthread $(CFLAGS)
 
 sum.o : sumfunc.h
-	$(CC) -o sum.o -c sumfunc.c -pthread $(CFLAGS)
+	$(CC) -fPIC -o sum.o -c sumfunc.c -pthread $(CFLAGS)
 
 clean :
-	rm utils.o find_min_max.o parallel_min_max process_memory zombie psum sum.o psum.o libsum.a
+	rm utils.o find_min_max.o parallel_min_max process_memory zombie psum sum.o psum.o
 
 libsum.a : sum.o
-	ar rcs libsum.a sum.o
+	mkdir bin -p
+	ar rcs bin/libsum.a sum.o
 
-
-	
+all : 
+	$(MAKE) parallel_min_max
+	$(MAKE) process_memory
+	$(MAKE) zombie
+	$(MAKE) psum
